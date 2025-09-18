@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: uiw_db
+      POSTGRES_USER: uiw_user
+      POSTGRES_PASSWORD: uiw_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+
+  vocechat:
+    image: privoce/vocechat-server:latest
+    environment:
+      FRONTEND_URL: "http://localhost:3000"
+    volumes:
+      - vocechat_data:/home/vocechat-server/data
+    ports:
+      - "3009:3000"
+    restart: unless-stopped
+
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      WEBUI_AUTH: false
+    volumes:
+      - openwebui_data:/app/backend/data
+    ports:
+      - "8080:8080"
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  piper-tts:
+    image: rhasspy/piper:latest
+    volumes:
+      - ./piper_models:/data
+    ports:
+      - "10200:10200"
+    command: ["--model", "/data/en_US-lessac-medium.onnx", "--port", "10200", "--host", "0.0.0.0"]
+    restart: unless-stopped
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://uiw_user:uiw_password@postgres:5432/uiw_db
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      PIPER_TTS_URL: http://piper-tts:10200
+      OLLAMA_URL: http://ollama:11434
+      VOCECHAT_URL: http://vocechat:3000
+      OPENWEBUI_URL: http://openwebui:8080
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - minio
+      - ollama
+      - piper-tts
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_VOCECHAT_URL: http://localhost:3009
+      NEXT_PUBLIC_OPENWEBUI_URL: http://localhost:8080
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
+  ollama_data:
+  vocechat_data:
+  openwebui_data:
+  piper_data:
