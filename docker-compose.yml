@@ -61,10 +61,10 @@ services:
   piper-tts:
     image: rhasspy/piper:latest
     volumes:
-      - piper_data:/data
+      - ./piper_models:/data
     ports:
       - "10200:10200"
-    command: ["--model", "/data/en_US-lessac-medium.onnx", "--port", "10200"]
+    command: ["--model", "/data/en_US-lessac-medium.onnx", "--port", "10200", "--host", "0.0.0.0"]
     restart: unless-stopped
 
   backend:

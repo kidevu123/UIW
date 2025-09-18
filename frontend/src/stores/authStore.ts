@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -194,6 +194,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'uiw-auth-storage',
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
         token: state.token,

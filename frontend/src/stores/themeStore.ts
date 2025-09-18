@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export interface MoodTheme {
   id: string;
@@ -109,6 +109,7 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: 'uiw-theme-storage',
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );
